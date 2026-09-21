@@ -83,3 +83,4 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate# pulsepass
+# pulsepass
