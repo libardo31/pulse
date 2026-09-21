@@ -1,87 +1,127 @@
-# PulsePass
+# pulsePass
 
-Proyecto de persistencia para una plataforma de eventos, artistas y entradas.
+plataforma de evento
+## descripción
 
-Desarrollado con Java 21, Spring Boot 4, Spring Data JPA, Hibernate,
-PostgreSQL, Flyway y Testcontainers.
+pulsePass permite gestionar venues eventos, artistas, usuarios, perfiles
+y entradas
 
-## Modelo de datos
+El proyecto se enfoca en la persistencia, consultas, restricciones de base de
+datos y pruebas de integracion.
 
-El proyecto contiene las siguientes entidades:
+## modelo de datos
 
-- `Venue`
-- `Event`
-- `Artist`
-- `User`
-- `UserProfile`
-- `Ticket`
+Entidades principales:
 
-Relaciones principales:
+- Venue
+- Event
+- Artist
+- User
+- UserProfile
+- Ticket
 
-- `Venue` 1:N `Event`
-- `Event` N:M `Artist`
-- `User` 1:1 `UserProfile`
-- `User` 1:N `Ticket`
-- `Event` 1:N `Ticket`
+relaciones:
 
-La relación N:M entre `Event` y `Artist` utiliza la tabla intermedia
-`event_artists`.
+- Venue 1:N Event
+- Event N:M Artist
+- User 1:1 UserProfile
+- User 1:N Ticket
+- Event 1:N Ticket
 
-## Reglas de integridad
+La relación Event-Artist utiliza la tabla `event_artists`.
 
-La base de datos utiliza restricciones para proteger la información:
+## restricciones
 
-- `Venue.code` es UNIQUE.
-- `Venue.capacity` debe ser mayor que cero.
-- `Event.eventCode` es UNIQUE.
-- `Artist.stageName` es UNIQUE.
-- `User.username` es UNIQUE.
-- `User.email` es UNIQUE.
-- `UserProfile.user_id` es UNIQUE para garantizar la relación 1:1.
-- `Ticket.ticketCode` es UNIQUE.
-- `Ticket.price` debe ser mayor o igual a cero.
-- Las relaciones utilizan claves foráneas.
+- `Venue.code` es UNIQUE y NOT NULL.
+- `Venue.capacity` debe ser mayor que 0.
+- `Event.eventCode` es UNIQUE y NOT NULL.
+- `Artist.stageName` es UNIQUE y NOT NULL.
+- `User.username` y `User.email` son UNIQUE y NOT NULL.
+- `UserProfile.user_id` es FK y UNIQUE.
+- `Ticket.ticketCode` es UNIQUE y NOT NULL.
+- `Ticket.price` debe ser mayor o igual a 0.
+- Ticket requiere un User y un Event.
+- `event_artists` utiliza una clave primaria compuesta.
 
-Los enums se almacenan por nombre y no por ordinal.
+Los precios utilizan `BigDecimal` y `NUMERIC`.
 
-## Migraciones Flyway
+## enuneraciones
 
-El esquema de la base de datos es administrado mediante Flyway.
+- EventCategory: MUSIC, SPORTS, TECHNOLOGY, EDUCATION, CULTURE, ENTERTAINMENT.
+- EventStatus: DRAFT, PUBLISHED, SOLD_OUT, CANCELLED, FINISHED.
+- TicketType: GENERAL, VIP, BACKSTAGE, STUDENT.
+- TicketStatus: RESERVED, PAID, CANCELLED, USED.
 
-### V1__create_schema.sql
+## flyway
 
-Crea las tablas principales:
+Flyway administra el esquema de la base de datos.
 
-- `venues`
-- `events`
-- `artists`
-- `event_artists`
-- `users`
-- `user_profiles`
-- `tickets`
+- V1: `V1__create_schema.sql` crea tablas, relaciones y restricciones.
+- V2: `V2__insert_initial_artists.sql` inserta los artistas iniciales.
+- V3: `V3__add_streaming_url_to_event.sql` agrega `streaming_url`.
 
-También crea claves primarias, claves foráneas, restricciones e índices.
+Hibernate utiliza `ddl-auto=validate`, por lo que solo valida el esquema.
 
-### V2__insert_initial_artists.sql
+## query methods
 
-Inserta los artistas iniciales:
+se utilizan Query Methods para las consultas sencillas.
 
-- Solar Beat
-- Neon Waves
-- Caribbean Sound
-- Ocean Drive
-- Digital Pulse
+### VenueRepository
 
-### V3__add_streaming_url_to_event.sql
+- `findByCode`
 
-Agrega el campo opcional `streaming_url` a la tabla `events`.
+### EventRepository
 
-La aplicación utiliza:
+- `findByEventCode`
+- `findByStatusOrderByEventDateAsc`
+- `findByVenueCode`
 
-```yaml
-spring:
-  jpa:
-    hibernate:
-      ddl-auto: validate# pulsepass
-# pulsepass
-# pulsepass
+### ArtistRepository
+
+- `findByStageNameIgnoreCase`
+
+### UserRepository
+
+- `findByEmailIgnoreCase`
+- `findByUsername`
+
+### TicketRepository
+
+- `findByUserEmailIgnoreCase`
+- `findByUserEmailIgnoreCaseAndStatus`
+- `findByEventEventCodeAndStatus`
+- `findByEventEventCodeAndEventEventDateAfterOrderByEventEventDateAsc`
+
+## JPQL
+
+Las consultas complejas utilizan JPQL mediante `@Query`.
+
+Se incluyen consultas para eventos por artista, eventos por ciudad y artista,
+eventos recomendados y conteo de entradas con estado `PAID`.
+
+No se utilizan consultas SQL nativas.
+
+## Datos de prueba
+
+Venue: `VEN-SMR-01`, Marina Convention Center, Santa Marta, capacidad 5000.
+
+Event: `CMF-2026`, Caribbean Music Fest 2026, categoría MUSIC y estado PUBLISHED.
+
+Artistas: Solar Beat, Neon Waves y Caribbean Sound.
+
+Entradas: Andrea VIP PAID, Carlos GENERAL PAID, Laura GENERAL RESERVED
+y Miguel VIP CANCELLED.
+
+## Ejecución
+
+Requisitos:
+
+- Java 21
+- Maven
+- PostgreSQL
+- Docker Desktop
+
+Ejecutar las pruebas con:
+
+```bash
+mvn clean test
