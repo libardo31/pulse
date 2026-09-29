@@ -1,127 +1,145 @@
-# pulsePass
+# PulsePass
 
-plataforma de evento
-## descripción
+Proyecto de persistencia para una plataforma de eventos, artistas y entradas.
 
-pulsePass permite gestionar venues eventos, artistas, usuarios, perfiles
-y entradas
+Desarrollado con Java 21, Spring Boot 4, Spring Data JPA, Hibernate,
+PostgreSQL, Flyway y Testcontainers.
 
-El proyecto se enfoca en la persistencia, consultas, restricciones de base de
-datos y pruebas de integracion.
+## Modelo de datos
 
-## modelo de datos
+El proyecto contiene las siguientes entidades:
 
-Entidades principales:
+- `Venue`
+- `Event`
+- `Artist`
+- `User`
+- `UserProfile`
+- `Ticket`
 
-- Venue
-- Event
-- Artist
-- User
-- UserProfile
-- Ticket
+Relaciones principales:
 
-relaciones:
+- `Venue` 1:N `Event`
+- `Event` N:M `Artist`
+- `User` 1:1 `UserProfile`
+- `User` 1:N `Ticket`
+- `Event` 1:N `Ticket`
 
-- Venue 1:N Event
-- Event N:M Artist
-- User 1:1 UserProfile
-- User 1:N Ticket
-- Event 1:N Ticket
+La relación N:M entre `Event` y `Artist` utiliza la tabla intermedia
+`event_artists`.
 
-La relación Event-Artist utiliza la tabla `event_artists`.
+## Reglas de integridad
 
-## restricciones
+La base de datos utiliza restricciones para proteger la información:
 
-- `Venue.code` es UNIQUE y NOT NULL.
-- `Venue.capacity` debe ser mayor que 0.
-- `Event.eventCode` es UNIQUE y NOT NULL.
-- `Artist.stageName` es UNIQUE y NOT NULL.
-- `User.username` y `User.email` son UNIQUE y NOT NULL.
-- `UserProfile.user_id` es FK y UNIQUE.
-- `Ticket.ticketCode` es UNIQUE y NOT NULL.
-- `Ticket.price` debe ser mayor o igual a 0.
-- Ticket requiere un User y un Event.
-- `event_artists` utiliza una clave primaria compuesta.
+- `Venue.code` es UNIQUE.
+- `Venue.capacity` debe ser mayor que cero.
+- `Event.eventCode` es UNIQUE.
+- `Artist.stageName` es UNIQUE.
+- `User.username` es UNIQUE.
+- `User.email` es UNIQUE.
+- `UserProfile.user_id` es UNIQUE para garantizar la relación 1:1.
+- `Ticket.ticketCode` es UNIQUE.
+- `Ticket.price` debe ser mayor o igual a cero.
+- Las relaciones utilizan claves foráneas.
 
-Los precios utilizan `BigDecimal` y `NUMERIC`.
+Los enums se almacenan por nombre y no por ordinal.
 
-## enuneraciones
+## Migraciones Flyway
 
-- EventCategory: MUSIC, SPORTS, TECHNOLOGY, EDUCATION, CULTURE, ENTERTAINMENT.
-- EventStatus: DRAFT, PUBLISHED, SOLD_OUT, CANCELLED, FINISHED.
-- TicketType: GENERAL, VIP, BACKSTAGE, STUDENT.
-- TicketStatus: RESERVED, PAID, CANCELLED, USED.
+El esquema de la base de datos es administrado mediante Flyway.
 
-## flyway
+### V1__create_schema.sql
 
-Flyway administra el esquema de la base de datos.
+Crea las tablas principales:
 
-- V1: `V1__create_schema.sql` crea tablas, relaciones y restricciones.
-- V2: `V2__insert_initial_artists.sql` inserta los artistas iniciales.
-- V3: `V3__add_streaming_url_to_event.sql` agrega `streaming_url`.
+- `venues`
+- `events`
+- `artists`
+- `event_artists`
+- `users`
+- `user_profiles`
+- `tickets`
 
-Hibernate utiliza `ddl-auto=validate`, por lo que solo valida el esquema.
+También crea claves primarias, claves foráneas, restricciones e índices.
 
-## query methods
+### V2__insert_initial_artists.sql
 
-se utilizan Query Methods para las consultas sencillas.
+Inserta los artistas iniciales:
 
-### VenueRepository
+- Solar Beat
+- Neon Waves
+- Caribbean Sound
+- Ocean Drive
+- Digital Pulse
 
-- `findByCode`
+### V3__add_streaming_url_to_event.sql
 
-### EventRepository
+Agrega el campo opcional `streaming_url` a la tabla `events`.
 
-- `findByEventCode`
-- `findByStatusOrderByEventDateAsc`
-- `findByVenueCode`
+La aplicación utiliza:
 
-### ArtistRepository
+```yaml
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+## Capa de servicio — continuación del taller
 
-- `findByStageNameIgnoreCase`
+Este proyecto continúa el taller anterior de persistencia de PulsePass. Se conserva
+el dominio, las relaciones JPA, las migraciones Flyway, los repositories y las
+pruebas de integración existentes.
 
-### UserRepository
+### Componentes agregados
 
-- `findByEmailIgnoreCase`
-- `findByUsername`
+- DTOs mediante `record`.
+- MapStruct para Entity → DTO.
+- `ResourceNotFoundException` para recursos inexistentes.
+- `BusinessRuleException` para operaciones no permitidas por reglas de negocio.
+- `EventService` / `EventServiceImpl`.
+- `TicketService` / `TicketServiceImpl`.
+- `ArtistService` / `ArtistServiceImpl` como reto adicional de integración.
+- Inyección de dependencias mediante constructor.
+- `@Transactional(readOnly = true)` para lecturas y `@Transactional` para operaciones de escritura.
+- `Optional` con `orElseThrow()`.
+- Transformaciones con `stream()`, `map()` y `toList()`.
+- Unit tests con JUnit, Mockito y AssertJ.
 
-### TicketRepository
+### Adaptación del laboratorio de capa de servicio
 
-- `findByUserEmailIgnoreCase`
-- `findByUserEmailIgnoreCaseAndStatus`
-- `findByEventEventCodeAndStatus`
-- `findByEventEventCodeAndEventEventDateAfterOrderByEventEventDateAsc`
+El documento de servicio utiliza el dominio DeepBlue Rescue como ejemplo. En este
+proyecto se conserva la misma estructura pedagógica, pero aplicada al dominio
+PulsePass existente:
 
-## JPQL
+- `RescueCaseService` → `EventService`.
+- `TreatmentService` → `TicketService`.
+- Reto `AnimalService` → `ArtistService`.
+- `RescueCaseResponse` → `EventResponse`.
+- `TreatmentResponse` → `TicketResponse`.
 
-Las consultas complejas utilizan JPQL mediante `@Query`.
+Las reglas específicas de DeepBlue se sustituyen por reglas coherentes con el
+modelo PulsePass y su PRD. Por ejemplo, un ticket solo puede crearse para un
+evento publicado, un usuario debe estar activo y no se permite crear tickets
+para eventos ya realizados.
 
-Se incluyen consultas para eventos por artista, eventos por ciudad y artista,
-eventos recomendados y conteo de entradas con estado `PAID`.
+### Pruebas unitarias
 
-No se utilizan consultas SQL nativas.
+Las pruebas de servicio utilizan Mockito para reemplazar repositories y mappers,
+por lo que no necesitan PostgreSQL ni Testcontainers. Se cubren, entre otros:
 
-## Datos de prueba
+- recurso existente → DTO;
+- recurso inexistente → `ResourceNotFoundException`;
+- transición válida → `save()`;
+- transición inválida → `BusinessRuleException` y nunca `save()`;
+- creación válida de ticket → `save()`;
+- usuario inactivo → `BusinessRuleException`;
+- evento no publicado o ya realizado → `BusinessRuleException`;
+- código de ticket duplicado → `BusinessRuleException`.
 
-Venue: `VEN-SMR-01`, Marina Convention Center, Santa Marta, capacidad 5000.
-
-Event: `CMF-2026`, Caribbean Music Fest 2026, categoría MUSIC y estado PUBLISHED.
-
-Artistas: Solar Beat, Neon Waves y Caribbean Sound.
-
-Entradas: Andrea VIP PAID, Carlos GENERAL PAID, Laura GENERAL RESERVED
-y Miguel VIP CANCELLED.
-
-## Ejecución
-
-Requisitos:
-
-- Java 21
-- Maven
-- PostgreSQL
-- Docker Desktop
-
-Ejecutar las pruebas con:
+Para ejecutar todas las pruebas:
 
 ```bash
 mvn clean test
+```
+
+Las pruebas de integración del taller anterior continúan usando PostgreSQL mediante
+Testcontainers; las pruebas unitarias nuevas no levantan contenedores.
